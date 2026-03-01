@@ -77,10 +77,10 @@ Format:
 
 ---
 
-## 2026-02-28 PRD-034 (Planned)
-- SSOT/Anchor change: 정책 수정 시 신규 DecisionVersion 생성을 통한 버전 체인 SSOT 유지
-- Entry/Touchpoint change: `src/session/intervention_handler.ts` (사용자 정책 수정 루프)
-- Contract/Interface change: 구조화된 POLICY 충돌 보고서 스키마 정의 및 수정 감사 추적 계약
+## 2026-03-01 PRD-034 (DESIGN DRAFT)
+- SSOT/Anchor change: 정책 수정 시 신규 DecisionVersion 생성을 통한 버전 체인 SSOT 유지 (overwrite 금지)
+- Entry/Touchpoint change: `src/session/intervention_handler.ts` (사용자 정책 수정 루프), `src/core/plan/plan.executor.ts` (구조화된 POLICY 위반 보고서 생성)
+- Contract/Interface change: `GraphIntervention` 스키마 확장 (`policyFindings` 필드 추가), 3-way 사용자 응답(KEEP/MODIFY/REGISTER) 계약 확정
 
 ---
 

@@ -158,7 +158,7 @@ Patch:
 ---
 
 ## PRD-034 — Policy Modification & Conflict Resolution Flow
-Status: PLANNED
+Status: DESIGN DRAFT
 - [ ] POLICY 위반 발생 시 구조화된 충돌 보고서 생성 확인
 - [ ] 사용자 응답(승인/수정)에 따른 신규 DecisionVersion 생성 확인
 - [ ] 수정된 정책이 다음 실행 사이클에 즉시 적용 확인
