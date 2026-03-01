@@ -27,10 +27,14 @@
 - 검색 엔진 내부의 무작위성(Randomness)은 배제되어야 한다.
 
 ## 7. Performance & Quality Gate
-- **Latency Budget**: 검색 프로세스의 p95 지연 시간은 **1200ms 이하**여야 한다.
+- **Latency Budget**: Retrieval 단계 단독 기준 p95 지연 시간은 **1200ms 이하**여야 한다.
+  (LLM 추론 시간 및 후속 실행 단계는 포함하지 않는다.)
 - **Quality Gate**:
     - **Precision@k**: 기존 Baseline(`hierarchical_sql`) 이상의 정확도를 유지해야 한다.
-    - **Recall Policy**: Baseline 대비 Recall regression > 5%는 허용되지 않는다. 단, Baseline에서 반환되던 **STRONG Decision** 누락 발생 시에는 즉시 BLOCK 처리한다.
+    - **Recall Policy**: Baseline 대비 Recall regression > 5%는 허용되지 않는다.
+    - Baseline에서 반환되던 **STRONG Decision** 누락 발생 시,
+      해당 전략(hybrid_v1)은 품질 검증 단계에서 BLOCK 처리되며,
+      세션 실행은 자동으로 hierarchical_sql로 폴백되어 계속 진행된다.
 
 ## 8. LOCK Section
 - **Strategy Selection**: Bundle/Pin 기반으로 결정론적으로 고정된다.

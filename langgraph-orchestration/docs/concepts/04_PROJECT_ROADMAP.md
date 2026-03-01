@@ -62,21 +62,27 @@
 - **Core Execution Hook 확장성 (PRD-021)**: ✅ 해결 완료.
 - **Atlas Index Engine**: ✅ 구현 완료 (PRD-026).
 - **Decision Capture Layer**: ✅ 구현 완료 (PRD-025).
-- **Anchor 자동화 (Semantic Memory Automation)**: Letta 레이어 통합 미비. Phase 9에서 구현 예정.
-- **Agent Separation (조사-구현 분리)**: 정책적으로만 존재. Phase 10에서 물리적 강제 구현 예정.
-- **Multimodal 확장 (Schema Flexibility)**: 텍스트 중심 현재 엔진. Phase 11에서 추상화 레이어 도입 예정.
-- **Domain Pack 확장 (Metafactory Expansion)**: 도메인 팩 라이브러리 부재. PRD-028 슬롯 예약, 코딩 번들 검증 후 확장 예정.
-- **Platformization (SaaS Scale-up)**: 멀티 테넌트, Stable/Canary 채널 등 플랫폼 기능 미완성.
+- **Retrieval Strategy 검색 품질 고도화**: ✅ 구현 완료 (PRD-023).
+- **WorkItem & Completion Engine**: ✅ 구현 완료 (PRD-027).
+- **Domain Pack Library & Validation**: ✅ 구현 완료 (PRD-028).
+- **Guardian YAML Wiring (Live Plan Injection Gap)**: ✅ 구현 완료 (PRD-030).
+- **Persist Proposal (Ask-to-Commit)**: ✅ 구현 완료 (PRD-029).
 
 ## 🔒 Minimum Engine Completion Set (Core Operational Ready)
 
 - PRD-026 — CLOSED
-- PRD-025 — CLOSED (DESIGN_CONFIRMED까지)
-- PRD-022 — CLOSED (2026-02-27)
+- PRD-025 — CLOSED
+- PRD-022 — CLOSED
+- PRD-023 — CLOSED
+- PRD-027 — CLOSED
+- PRD-028 — CLOSED
+- PRD-030 -- CLOSED
+- PRD-031 -- CLOSED
+- PRD-032 -- CLOSED
 
 ---
 
-## **III. Path to Blueprint Completion (확장 단계)**
+## III. Path to Blueprint Completion (확장 단계)
 
 ### **1. Phase 7 — Atlas Index Engine + Guardian Automation**
 
@@ -143,66 +149,188 @@
 #### PRD-025: Decision Capture Layer
 상태: ✅ COMPLETED (2026-02-27)
 
-- Structured reason + root evidence Commit Gate 구현
+- Structured reason + root evidence Commit Gate 구현 완료
 - DecisionVersion에 reason JSON 영속 저장
 - InterventionRequired BLOCK 정책 구현
 - Plan Hash와 Decision Payload 완전 분리
 - Atlas 동기화는 PRD-026 Cycle-End 책임 유지
 
-⚠️ WorkItem 및 completion_policy는 PRD-027 범위로 분리.
+#### PRD-027: WorkItem Completion & VERIFIED Engine
+상태: ✅ COMPLETED (2026-02-28)
 
-- **목표**:
-  - 전문가가 "이거 왜 이렇게 했어?" → AI 근거 설명 → "그건 틀렸어, 이렇게 해" 흐름만으로 자동으로 규칙이 구조화되고 저장되는 구조 구현.
-  - 별도 규칙 설정 UI 없이 대화 자체가 번들 생성 인터페이스가 되도록 함.
-  - 코딩 번들 온보딩의 핵심 UX 기반.
-
-- **핵심 산출물**:
-  - Candidate → Proposed → Committed 3단계 오염 방지 필터
-  - DecisionProposalV1 스키마 (LLM 산출물 표준)
-  - conversationTurnRef 포맷 (`conversation:<conversationId>:<turnId>`)
-  - 저장 정책 옵션 B (Auto-detect + Ask-to-commit) MVP 구현
-  - Enforcer 강제 규칙 (evidenceRefs/changeReason 없으면 저장 거부)
-  - **WorkItem 엔티티 및 상태 전이 엔진** (PROPOSED → ANALYZING → DESIGN_CONFIRMED → IMPLEMENTING → IMPLEMENTED → VERIFIED → CLOSED)
-  - **completion_policy 평가기** (Domain Pack 기반 완료 판정 — 테스트 Evidence, Conflict 클리어, Contract Lock 위반 없음 등)
-
-- **저장 정책 롤아웃**:
-  - MVP: **옵션 B만** (자동 감지 + 저장 제안)
-  - 데이터 축적 후: **옵션 B + C** (조건부 자동 저장)
-
-- **LOCK**:
-  - 감지는 LLM(Planner), 집행/저장은 코드(Enforcer) — Planner/Enforcer 분리 원칙 유지
-  - STRONG/lock/axis 충돌 가능성 있으면 자동 확정 금지
-  - Core 수정 없이 Atlas 루프 앞단 삽입으로만 구현
-  - DecisionVersion은 반드시 새 version 생성 + active 포인터 이동
-
-- **Atlas/WorkItem 연동**:
-  - Proposal → Atlas Query 입력(Change Context) 풍부화
-  - WorkItem 존재 시 Proposal 링크 → DESIGN_CONFIRMED → VERIFIED 흐름 통합
-
-- **Acceptance Criteria**:
-  - 대화에서 수정 지시 발생 시 Proposal 자동 생성 확인
-  - 옵션 B: 저장 제안 → YES 응답 → Committed 전환 정상 작동
-  - evidenceRefs 없는 Proposal 저장 거부 확인
-  - WorkItem 상태 전이 순서 강제 확인 (임의 점프 불가)
-  - completion_policy 조건 충족 시 VERIFIED 자동 판정 확인 (auto_verify_allowed=true 케이스)
-  - 기존 Atlas 루프 회귀 테스트 통과
-
-> **Status:** CLOSED (VERIFIED 자동 판정 제외, PRD-027 범위)
+- WorkItem v1 엔티티 (테이블 + 상태머신) 도입 완료
+- 상태 전이 강제 (PROPOSED → ANALYZING → DESIGN_CONFIRMED → IMPLEMENTING → IMPLEMENTED → VERIFIED → CLOSED)
+- completion_policy evaluator (Domain Pack 기반) 구현
+- auto_verify_allowed 정책 지원 및 Atlas stale 시 auto-verify 차단 로직 적용
+- 모든 전이 기록은 append-only 로그로 SSOT 관리
 
 ---
 
-### **3. Phase 8 — Retrieval Intelligence Upgrade 🔵 계획**
+### **3. Phase 8 — Retrieval Intelligence Upgrade**
 
 #### PRD-023: Retrieval Strategy 검색 품질 고도화
-- **목표**: PRD-021의 Strategy Port를 실제 활용하여 Decision/Evidence 검색 품질을 단계적으로 강화. PRD-005의 계층 순서(Policy→Structural→Semantic)와 Core Merge Logic 절대 유지.
-- **핵심 산출물**:
-  - Semantic/Hybrid Strategy 구현
-  - 품질 평가 루브릭/벤치마크 (Precision/Recall/Latency)
-  - 전략 선택이 Bundle/Pin에 고정되는 운영 경로 확립
+상태: ✅ COMPLETED (2026-02-28)
+
+- **구현 성과**:
+  - `DecisionContextProviderPort` 기반 Strategy Injection 구조 확립
+  - `hybrid_v1` (Semantic + SQL 결합) 전략 도입 및 품질 벤치마크 통과
+  - 검색 실패 시 `hierarchical_sql`로의 자동 폴백(Failover) 메커니즘 구축
+  - 결정론적 결과 순서 보장 및 Plan Hash 분리 원칙 고수
+- **의미**:
+  - 단순 키워드 매칭을 넘어 맥락 기반의 고도화된 근거(Evidence) 탐색 가능
+  - 시스템 안정성을 해치지 않으면서 검색 엔진의 점진적 개선 경로 확보
+
 - **LOCK**:
   - Memory Loading Order 유지 (PRD-005)
   - Merge Logic은 Core 유지
   - Strategy/Provider 선택은 Bundle/Pin에 고정 (PRD-018)
+
+---
+
+### **3.5 Phase 8.5 — Runtime Enforcement & Auto-Capture Hardening**
+
+이 단계는 엔진 단위 테스트는 통과했으나, 웹 라이브 경로에서 미완성 상태로 남아 있는 구조적 갭을 해소하는 단계이다.
+
+---
+
+#### PRD-030: Guardian YAML Wiring (Plan Validator Injection)
+
+상태: ✅ COMPLETED (2026-02-28)
+
+**구현 완료 사항:**
+- `ModeDefinition` 스키마 확장 (`validators`, `postValidators` 추가)
+- `PolicyInterpreter`의 YAML 해석 및 `ExecutionPlan` 주입 로직 구현 완료
+- `PlanHash` 계산 시 가디언 선언 정보 포함 (순서 SSOT 보장)
+- 웹 런타임 경로에서도 Guardian wiring이 동작하도록 경로를 완성 (단, 실제 BLOCK 실증은 PRD-031/032에서 수행)
+
+**의미:**
+- 가디언 엔진(PRD-022)과 정책 선언(YAML) 사이의 마지막 연결 고리 완성
+- 정책 로직(stub 제거)과 라이브 실증은 후속 PRD로 분리.
+
+**LOCK 확인:**
+- `validators`/`postValidators`는 `mode` 루트 레벨에만 위치 (LOCK-030-1)
+- 선언 순서 기반 PlanHash 결정론 유지 (LOCK-030-2)
+- 가디언의 Side-Effect 격리 (GraphState/Decision 직접 수정 금지) 준수
+
+---
+
+#### PRD-031: Guardian Rule Set Implementation (Live BLOCK Enablement)
+
+상태: ✅ COMPLETED (2026-02-28)
+
+**구현 완료 사항:**
+- `GuardianAudit` 전용 감사 테이블 도입 및 영속화 경로 구축
+- `BlockKey` (planHash, turnId, validatorId, targetRootId) 기반 무한 루프 방지 로직 구현
+- `guardian.contract`, `guardian.evidence_integrity` 등 실제 BLOCK validator 로직 구현
+- `MinimalPersistenceRecordV1` 및 `GuardianAuditRecordV1` 감사 스키마 확정
+
+**의미:**
+- 단순 Wiring(PRD-030)을 넘어 실질적인 정책 집행 및 감사 추적 기능 확보
+- 무결성 위반 시 안전한 차단 및 시스템 인지(Informed Block) 메커니즘 완성
+
+**LOCK 확인:**
+- `GuardianAudit`은 정규 SSOT와 분리된 감사 전용 저장소로 운영
+- 가디언은 `GraphState`/`Decision` 직접 수정 금지 원칙 고수
+- `BlockKey` 판단은 DB 조회를 SSOT로 사용 (인메모리 배제)
+
+---
+
+#### PRD-032: Live Validation Harness & Seed Data Stabilization
+
+상태: ✅ COMPLETED (2026-02-28)
+
+**구현 완료 사항:**
+- Seed Run 시나리오 4종(Guardian/Decision/WorkItem/Atlas) 정의 및 자동화
+- 동일 입력 반복 실행 시 `PlanHash`, `snapshotId`, `InterventionRequired` 판정 일관성 검증 완료
+- `freshSession=true` 조건에서의 결정론적 재현성(Determinism) 3회 연속 통과
+- DB 데이터 관계 무결성 및 세션 재로드 검증 프로세스 구축
+
+**의미:**
+- 엔진의 핵심 무결성(Hash/Storage/Atlas)이 실제 런타임 사이클에서 안정적으로 유지됨을 실증
+- 향후 기능 추가 시의 회귀 테스트를 위한 표준 데이터 세트 및 검증 하네스 확보
+
+**LOCK 확인:**
+- `snapshotId` 및 `atlasFingerprint` 식별자 격리 준수
+- 검증 실패 시 `PersistSession` 재시도 금지 정책 적용
+- 가디언 Findings의 해시 입력 제외 원칙 재검증 완료
+
+---
+
+#### PRD-029: Persist Proposal (Ask-to-Commit)
+
+상태: ✅ COMPLETED (2026-02-28)
+
+**구현 완료 사항:**
+- `InterventionRequired(source="PLANNER")` 기반 제안-승인 표준 흐름 구현
+- `(conversationId, turnId, targetRootId)` 3-tuple 멱등성 검증 로직 도입
+- `evidence.conversationTurnRefs(minItems:1)` 강제를 통한 근거 기반 영속화 확립
+- `PersistSession` 이전 DB write 0회 보장 및 해시 격리 검증 완료
+
+**의미:**
+- 플래너의 권한 경계(Authority Boundary)를 명확히 하고, 사용자의 명시적 승인 하에만 상태를 확정하는 안전 장치 확보
+- 중복 영속화 방지 및 결정론적 세션 이력 관리 체계 완성
+
+**LOCK 확인:**
+- `executePlan` 내부 직접적인 DB write 차단 준수
+- 3-tuple 기반 멱등성 판별 SSOT 확정
+- 제안 생성 행위의 `PlanHash` 독립성 유지
+
+---
+
+#### PRD-033: Policy Registration Engine (Decision -> Policy Promotion)
+
+상태: 🔵 PLANNED
+
+목표:
+- 승인된 결정(Decisions)을 활성 정책 규칙으로 자동 승격하는 엔진 도입
+- 결정(Decision)과 정책(Policy) 간의 결정론적 동기화 체계 구축
+- 정책의 버전 관리 및 원천 결정 ID 추적성 확보
+
+핵심 산출물:
+- Decision-to-Policy 변환 파이프라인 구현
+- 정책 업데이트 후 ExecutionPlan 재빌드/새로고침 메커니즘
+- 정책 버전과 결정 이력 간의 매핑 구조 정의
+
+LOCK:
+- 정책 승격 시 결정론적 해시 호환성 유지
+- 자동 승격 프로세스는 사용자의 최종 승인(PRD-029) 이후에만 트리거 가능
+
+Acceptance Criteria:
+- 승인된 결정으로부터 정책 규칙 생성 확인
+- 생성된 정책이 차기 ExecutionPlan 빌드에 정상 반영 확인
+- 정책 업데이트로 인한 세션 해시 오염 없음
+
+---
+
+#### PRD-034: Policy Modification & Conflict Resolution Flow
+
+상태: 🔵 PLANNED
+
+목표:
+- POLICY 위반 감지 시 사용자에게 구조화된 충돌 보고서 제시
+- 사용자가 기존 정책을 승인, 거부 또는 수정할 수 있는 루프 구현
+- 정책 편집 시 신규 DecisionVersion 생성을 통한 이력 보존
+
+핵심 산출물:
+- POLICY Finding -> 사용자 질의 인터랙션 루프
+- 정책 규칙 수정 워크플로우 및 UI 연동 스펙
+- 정책 업데이트에 대한 감사 추적(Audit Trail) 및 버전 관리
+
+LOCK:
+- 정책 수정 시 반드시 새로운 DecisionVersion 생성 (Overwrite 금지)
+- SAFETY 클래스 위반은 수정 흐름에서 제외 (고정 보안 정책 유지)
+
+Acceptance Criteria:
+- POLICY 위반 시 구조화된 보고서 생성 확인
+- 사용자 응답에 따른 DecisionVersion 업데이트 확인
+- 수정된 정책이 다음 실행 사이클에 즉시 적용 확인
+
+---
+
+구현 순서:
+1) PRD-032 (Live Validation Harness & Seed Data: Test 3~6 재검증)
+2) PRD-033 (Policy Registration Engine)
+3) PRD-034 (Policy Modification Flow)
 
 ---
 
@@ -245,15 +373,20 @@
 
 ---
 
-## 🟡 Phase 12-B — Deferred (Post Product-Market Fit)
+## ✅ Phase 12-B — Domain Pack Library & Infrastructure Preparation
 
-다음 항목은 제품 안정화 및 생태계 형성 이후 진행한다.
+**상태:** ✅ Completed (2026-02-28)
 
-- Provenance / Policy Snapshot / Computed Risk 슬롯 예약 유지
-- Export Hook 인터페이스 계약 명시 (비동기 처리 전제)
-- Physical AI 확장 필드 예약 (device_id, sensor refs 등)
-- Semantic Versioning 운영 원칙 선언 (Bundle/Decision 계층)
-- **PRD-028 슬롯 예약: Domain Pack Library + Pack Validation** (schema, allowlist, budget, versioning) — 코딩 번들 이후 두 번째 도메인 진입 시점에 독립 PRD로 분리
+#### PRD-028: Domain Pack Library + Pack Validation
+- **구현 내용**:
+  - AtlasDomainPack v1 스키마 표준화 (`scan_budget`, `conflict_points` 등)
+  - `PolicyInterpreter` 단계에서의 Fail-fast Validation 엔진 구현
+  - Domain Pack의 ExecutionPlan inline 주입 및 Hashing 격리 보장
+  - Top-level allowlist 자동 마이그레이션 로직 포함
+- **의미**:
+  - 도메인 지식의 파편화를 막고 구조화된 팩 단위의 관리/배포 체계 확립
+  - 런타임 진입 전 설정 오류를 차단하여 시스템 신뢰도 향상
+
 - Future Vault/PII Isolation Slot: Decision 구조에 `vaultRefs` 확장 필드 사전 확보 (외부 암호화 계층 대비, PlanHash/AtlasHash와 payload 결합 금지).
 
 ## Phase X — Multi-Domain Orchestrator (Planned)
@@ -326,25 +459,24 @@
 | PRD-020 | Extensible Message Schema | PLANNED | Phase 11 |
 | PRD-021 | Core Extensibility Patch (Execution Hook & Strategy Port) | COMPLETED | Phase 6.5 |
 | PRD-022 | Guardian Enforcement Layer | COMPLETED | Phase 7 |
-| PRD-023 | Retrieval Intelligence Upgrade | PLANNED | Phase 8 |
+| PRD-023 | Retrieval Intelligence Upgrade | COMPLETED | Phase 8 |
 | PRD-024 | Phase 12-A Structural Safety Seal | COMPLETED | Phase 12-A |
-| PRD-025 | Decision Capture Layer + WorkItem & Completion Policy Evaluator | COMPLETED | Phase 7.5 |
-| PRD-026 | Atlas Index Engine (Index Build/Update + Partial Scan Budget Enforcer) | COMPLETED | Phase 7 |
-#### PRD-027: WorkItem Completion & VERIFIED Engine
-**상태: 🔵 PLANNED**
-
-- WorkItem v1 엔티티 (테이블 + 상태머신) 도입
-- 상태 전이 강제 (PROPOSED → ... → VERIFIED → CLOSED)
-- completion_policy evaluator (Domain Pack 기반)
-- auto_verify_allowed 정책 지원
-- Atlas stale 시 auto-verify 금지
-| PRD-028 | (슬롯 예약) Domain Pack Library + Pack Validation | DEFERRED | Phase 12-B |
+| PRD-025 | Decision Capture Layer | COMPLETED | Phase 7.5 |
+| PRD-026 | Atlas Index Engine | COMPLETED | Phase 7 |
+| PRD-027 | WorkItem Completion & VERIFIED Engine | COMPLETED | Phase 7.5 |
+| PRD-028 | Domain Pack Library + Pack Validation | COMPLETED | Phase 12-B |
+| PRD-029 | Persist Proposal (Ask-to-Commit) | COMPLETED | Phase 8.5 |
+| PRD-030 | Guardian YAML Wiring | COMPLETED | Phase 8.5 |
+| PRD-031 | Guardian Rule Set Implementation | COMPLETED | Phase 8.5 |
+| PRD-032 | Live Validation Harness & Seed Data Stabilization | COMPLETED | Phase 8.5 |
+| PRD-033 | Policy Registration Engine | PLANNED | Phase 8.5 |
+| PRD-034 | Policy Modification & Conflict Resolution Flow | PLANNED | Phase 8.5 |
 
 ### **B. Definition of Done (DoD)**
 모든 단계는 [01 Master Blueprint](./01_Master_Blueprint.md)의 철학을 준수해야 하며, Core 수정 없이 번들/정책 수준에서 확장이 가능해야 함.
 
 ---
-*Last Updated: 2026-02-27 (PRD-022/025/026 COMPLETED 반영)*
+*Last Updated: 2026-02-28 (PRD-022~032 COMPLETED 반영)*
 
 ---
 
