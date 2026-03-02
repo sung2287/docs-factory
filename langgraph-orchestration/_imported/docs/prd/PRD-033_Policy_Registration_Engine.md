@@ -26,6 +26,10 @@ Policies currently lack formal lifecycle management:
 ## 5. Hard Invariants
 - **Registration Isolation:** Registration MUST NOT execute automatically inside the `executePlan` step loop or `PersistSession` handler.
 - **Eligibility Boundary:** `PersistSession` is not an execution trigger for registration writes. It may only produce eligibility artifacts (PolicyRegistrationRequest) for later administrative execution.
+- **Post-Run Automatic Registration (Target Architecture):**
+  Automatic registration execution is allowed at the post-run boundary
+  (after `runGraph` completes and before storage closure).
+  It is defined as the default product path but is not yet implemented.
 - **Transaction Boundary:** Registration MUST NOT mutate the decision SSOT in the same transaction as a plan execution. It must use its own atomic transaction.
 - **Idempotency:** Registration attempts for the same `PolicyHash` must be idempotent.
 - **State Independence:** Registration must not depend on or be blocked by an `InterventionRequired` state in any active session.
@@ -49,3 +53,28 @@ Policies currently lack formal lifecycle management:
 - Registration boundary explicitly defined as an external or post-run operation.
 - Implementation design preserves `PersistSession` invariants.
 - Atlas interaction defined as read-only or non-blocking post-run update.
+- [ ] Target-state automatic post-run executor implemented
+- [ ] Current-state vs Target-state distinction explicitly documented
+- [ ] PRD-034 must not assume auto-registration until this item is complete
+
+## 8. Administrative Boundary (Current State vs Target State)
+
+Current Implementation State:
+- Registration execution currently exists only via explicit CLI command.
+- No automatic post-run executor is implemented in the runtime.
+
+Target Product Architecture:
+- Web post-run automatic registration execution is the default product path.
+- CLI remains an operator tool invoking the same executor logic.
+- There must be exactly one Registration Executor implementation.
+
+Gap Definition:
+- The automatic post-run executor is defined as required architecture,
+  but is not yet implemented in the current codebase.
+- This gap must be resolved before PRD-034 depends on automatic registration.
+
+Consistency Rule:
+
+- Status reflects implementation reality.
+- Hard Invariants may define target architecture.
+- Target architecture MUST NOT be assumed by dependent PRDs until Exit Criteria are satisfied.

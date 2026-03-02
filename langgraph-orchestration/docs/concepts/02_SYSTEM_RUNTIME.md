@@ -4,6 +4,41 @@
 
 ---
 
+## [RUNTIME-LOCK] Web Runtime Surface Contract
+
+본 런타임의 1차 실행 표면(Primary Execution Surface)은
+Web Runtime Interface이다.
+
+### 1. Surface 우선순위
+
+- Web Runtime Surface가 공식 사용자 인터페이스이다.
+- CLI는 Operator/Debug/Development 보조 레이어이다.
+- CLI 전용 경로는 제품 기능으로 간주하지 않는다.
+
+### 2. Completion Gate (Runtime Level)
+
+런타임 차원에서 기능의 완료는 다음을 만족해야 한다:
+
+1. Web Runtime에서 직접 호출 가능할 것
+2. Web Session 상태와 통합될 것
+3. Web UI를 통해 사용자 플로우로 재현 가능할 것
+
+위 조건을 만족하지 못하는 기능은
+Runtime Feature로 승격될 수 없다.
+
+### 3. Architectural Guard
+
+- 새로운 기능은 Web Handler / API Layer / UI Trigger 중
+  최소 하나에 연결되어야 한다.
+- CLI Command만 존재하는 기능은
+  Runtime Feature Registry에 등록할 수 없다.
+
+LOCK:
+CLI 구현은 Runtime 실험 단계로만 허용되며,
+Web Surface 통합 없이는 Feature Complete로 선언할 수 없다.
+
+---
+
 ## **1. Runtime 역할 정의 (Executor vs Governance)**
 
 *   **Executor (실행기)**: GraphState, Mode Router, Session Store를 관리하며 LLM 호출 및 프롬프트 조립을 수행한다.

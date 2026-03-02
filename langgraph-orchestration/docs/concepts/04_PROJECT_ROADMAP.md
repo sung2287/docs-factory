@@ -67,6 +67,7 @@
 - **Domain Pack Library & Validation**: ✅ 구현 완료 (PRD-028).
 - **Guardian YAML Wiring (Live Plan Injection Gap)**: ✅ 구현 완료 (PRD-030).
 - **Persist Proposal (Ask-to-Commit)**: ✅ 구현 완료 (PRD-029).
+- **Policy Registration Engine**: ✅ 구현 완료 (PRD-033).
 
 ## 🔒 Minimum Engine Completion Set (Core Operational Ready)
 
@@ -79,6 +80,9 @@
 - PRD-030 -- CLOSED
 - PRD-031 -- CLOSED
 - PRD-032 -- CLOSED
+- PRD-033 -- CLOSED
+- PRD-034 -- CLOSED
+- PRD-035 -- CLOSED
 
 ---
 
@@ -189,7 +193,7 @@
 
 ### **3.5 Phase 8.5 — Runtime Enforcement & Auto-Capture Hardening**
 
-이 단계는 엔진 단위 테스트는 통과했으나, 웹 라이브 경로에서 미완성 상태로 남아 있는 구조적 갭을 해소하는 단계이다.
+이 단계는 웹 라이브 경로의 구조적 갭을 해소하여 E2E 도달성을 회복한 단계였다.
 
 ---
 
@@ -279,58 +283,77 @@
 
 #### PRD-033: Policy Registration Engine (Decision -> Policy Promotion)
 
-상태: 🔵 PLANNED
+상태: ✅ COMPLETED (2026-03-01)
 
-목표:
-- 승인된 결정(Decisions)을 활성 정책 규칙으로 자동 승격하는 엔진 도입
-- 결정(Decision)과 정책(Policy) 간의 결정론적 동기화 체계 구축
-- 정책의 버전 관리 및 원천 결정 ID 추적성 확보
+**구현 완료 사항:**
+- CLI 기반 정책 등록 엔진(Registration Executor) 구현 완료
+- `PolicyEntity` 스키마 및 결정론적 `PolicyHash` 사양 확정
+- `(rootId, version)` 기반의 엄격한 버전 체인 및 Idempotency 규칙 적용
+- Eligibility(상태)와 Registration Execution(행위)의 명확한 경계 분리
+- **Target Architecture 명시:** Registration Executor는 구현 완료(현재 CLI로 실행). 웹 런타임에서는 post-run에서 eligibility/materialization까지만 자동으로 생성되며, 실제 registration execution 자동화는 후속 과제로 Gap 관리.
 
-핵심 산출물:
-- Decision-to-Policy 변환 파이프라인 구현
-- 정책 업데이트 후 ExecutionPlan 재빌드/새로고침 메커니즘
-- 정책 버전과 결정 이력 간의 매핑 구조 정의
+**의미:**
+- 승인된 결정을 시스템 정책으로 승격할 수 있는 공식적인 "등록 관문" 확보
+- 정책의 이력 관리 및 버전 재현성을 보장하는 데이터 레이어 완성
 
-LOCK:
-- 정책 승격 시 결정론적 해시 호환성 유지
-- 자동 승격 프로세스는 사용자의 최종 승인(PRD-029) 이후에만 트리거 가능
-
-Acceptance Criteria:
-- 승인된 결정으로부터 정책 규칙 생성 확인
-- 생성된 정책이 차기 ExecutionPlan 빌드에 정상 반영 확인
-- 정책 업데이트로 인한 세션 해시 오염 없음
+**LOCK 확인:**
+- `executePlan` 루프 외부에서만 등록 실행 보장
+- `PersistSession` 트랜잭션과 독립적인 원자적 트랜잭션 처리
+- `policy.*` scope 결정을 유일한 승격 트리거로 사용
 
 ---
 
 #### PRD-034: Policy Modification & Conflict Resolution Flow
 
-상태: 🔵 PLANNED
+상태: ✅ COMPLETED (2026-03-02)
 
-목표:
-- POLICY 위반 감지 시 사용자에게 구조화된 충돌 보고서 제시
-- 사용자가 기존 정책을 승인, 거부 또는 수정할 수 있는 루프 구현
-- 정책 편집 시 신규 DecisionVersion 생성을 통한 이력 보존
+**구현 완료 사항:**
+- POLICY 위반 감지 시 `InterventionRequired`를 통한 구조화된 충돌 보고서 및 선택지 제시 로직 구현
+- 사용자 승인/거부/수정 입력에 따른 `DecisionVersion` 신규 생성 및 체인 관리 확립
+- 정책 수정 시 기존 결정을 Overwrite하지 않고 신규 버전을 생성하는 이력 보존(Audit Trail) 메커니즘 적용
+- 정책 변경은 DecisionVersion으로 커밋되며, 정책 효력(adoption)은 차기 세션에서만 반영 (Next-session effect)
+- 현 세션의 ExecutionPlan은 재계산/변경하지 않음 (No retroactive mutation)
 
-핵심 산출물:
-- POLICY Finding -> 사용자 질의 인터랙션 루프
-- 정책 규칙 수정 워크플로우 및 UI 연동 스펙
-- 정책 업데이트에 대한 감사 추적(Audit Trail) 및 버전 관리
+**의미:**
+- 시스템의 가이드라인(Policy)이 고정된 벽이 아니라, 사용자와의 협의를 통해 진화할 수 있는 유연한 거버넌스 루프 완성
+- 지원되는 정책 수정 계약(KEEP/MODIFY/REGISTER) 범위 내에서는 코드 수정 없이 대화+결정으로 정책을 진화시킬 수 있는 루프를 확보.
 
-LOCK:
-- 정책 수정 시 반드시 새로운 DecisionVersion 생성 (Overwrite 금지)
-- SAFETY 클래스 위반은 수정 흐름에서 제외 (고정 보안 정책 유지)
-
-Acceptance Criteria:
-- POLICY 위반 시 구조화된 보고서 생성 확인
-- 사용자 응답에 따른 DecisionVersion 업데이트 확인
-- 수정된 정책이 다음 실행 사이클에 즉시 적용 확인
+**LOCK 확인:**
+- 정책 수정 시 항상 신규 `DecisionVersion` 생성 및 `parentVersion` 연결 준수 (Append-only)
+- SAFETY 클래스(보안/파괴적 행위)는 수정 흐름에서 원천 차단 유지
+- `KEEP_POLICY`는 정책 진화 이벤트가 아니며, 감사 로그(`POLICY_ACKNOWLEDGED`)만 생성
+- `PlanHash` 계산 규칙에 영향 없음 (No PlanHash change)
 
 ---
 
-구현 순서:
-1) PRD-032 (Live Validation Harness & Seed Data: Test 3~6 재검증)
-2) PRD-033 (Policy Registration Engine)
-3) PRD-034 (Policy Modification Flow)
+#### PRD-035: Policy Decision Core Unlock & Wiring Completion
+
+상태: ✅ COMPLETED (2026-03-02)
+
+**구현 완료 사항:**
+- `policy.<profile>.<mode>` 형식의 엄격한 3-segment 가드 및 prefix allowlist 도입 완료
+- `interventionResponse.action` (MODIFY/REGISTER/KEEP) → `PersistDecision` 배선 공식화
+- 정책 수정 시 `registeredPolicyRootId`만을 유일한 SSOT Seed로 사용하는 root 고정 메커니즘 확립
+- `KEEP_POLICY` 선택 시 결정 생성 없이 오직 감사 로그(`POLICY_ACKNOWLEDGED`)만 남기는 invariant 준수
+- 정책 외 일반 실행 시 `PlanHash` 알고리즘 회귀 없음(Regression Pass) 확인
+
+**의미:**
+- 엔진 코어의 잠금을 해제하여 PRD-034의 정책 수정 흐름이 실제 런타임에서 종단 간(E2E) 실행 가능해짐 (Core unlock: policy scope validation + intervention wiring)
+- 사용자 개입 채널과 결정 영속화 레이어 간의 배선이 완료되어 "대화를 통한 정책 진화"의 기술적 토대 완성
+
+**LOCK 확인:**
+- `executePlan` 내부 DB 직접 쓰기 금지 유지
+- `PlanHash` 계산 시 정책 결정 데이터(intervention findings) 제외 원칙 고수
+- `APPROVE`/`REJECT` 신호는 결정 계층으로 승격되지 않고 오직 게이트 제어로만 작동
+- SAFETY 클래스 위반은 수정 흐름에서 원천 차단 유지
+
+---
+
+구현 순서 (완료):
+1) PRD-032 (Live Validation Harness & Seed Data: 검증 완료)
+2) PRD-033 (Policy Registration Engine: 엔진 구축 완료)
+3) PRD-034 (Policy Modification Flow: 정책 수정 루프 확정)
+4) PRD-035 (Core Unlock & Wiring Completion: 코어 배선 및 잠금 해제 완료)
 
 ---
 
@@ -469,14 +492,15 @@ Acceptance Criteria:
 | PRD-030 | Guardian YAML Wiring | COMPLETED | Phase 8.5 |
 | PRD-031 | Guardian Rule Set Implementation | COMPLETED | Phase 8.5 |
 | PRD-032 | Live Validation Harness & Seed Data Stabilization | COMPLETED | Phase 8.5 |
-| PRD-033 | Policy Registration Engine | PLANNED | Phase 8.5 |
-| PRD-034 | Policy Modification & Conflict Resolution Flow | PLANNED | Phase 8.5 |
+| PRD-033 | Policy Registration Engine | COMPLETED | Phase 8.5 |
+| PRD-034 | Policy Modification & Conflict Resolution Flow | COMPLETED | Phase 8.5 |
+| PRD-035 | Policy Decision Core Unlock (scope allowlist + intervention wiring) | COMPLETED | Phase 8.5 |
 
 ### **B. Definition of Done (DoD)**
 모든 단계는 [01 Master Blueprint](./01_Master_Blueprint.md)의 철학을 준수해야 하며, Core 수정 없이 번들/정책 수준에서 확장이 가능해야 함.
 
 ---
-*Last Updated: 2026-02-28 (PRD-022~032 COMPLETED 반영)*
+*Last Updated: 2026-03-02 (PRD-035 CLOSED)*
 
 ---
 

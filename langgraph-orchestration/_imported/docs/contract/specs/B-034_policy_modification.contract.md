@@ -20,6 +20,12 @@ Add to GraphIntervention:
 - `policyFindings` MUST be sourced from the in-core `runValidators` finding snapshot generated inside `executePlan`.
 - DTO/UI layers MUST NOT synthesize, filter, or transform findings beyond serialization; SAFETY exclusion MUST be enforced in-core.
 
+Exposure Constraint:
+- policyFindings MUST NOT be exposed directly to UI.
+- A deterministic transformation to PolicyConflictView MUST occur in-core.
+- DTO layer MUST serialize only PolicyConflictView.
+- DTO layer MUST NOT transform or synthesize conflict data.
+
 ## 2. User Response Schema
 
 ```json
@@ -51,14 +57,18 @@ Add to GraphIntervention:
 - Root allocation MUST be performed by the Policy Registration boundary (PRD-033) and MUST NOT be performed by the Planner or the UI.
 - The initial DecisionProposal for `REGISTER_POLICY` MUST be treated as a "new policy draft intent" and MUST NOT assume a pre-existing policy root.
 - The proposal MUST include `policyKey` (human-stable identifier) sufficient for PRD-033 to create a new root chain deterministically.
+- For `REGISTER_POLICY`, the resulting committed `policy.*` DecisionVersion MUST produce a `PolicyRegistrationRequest` at Eligibility creation time. Root allocation occurs only during Registration Execution under PRD-033 authority.
 
-### 3.1 Root Allocation Constraints
-- The Planner MUST NOT fabricate `rootId` values.
-- The UI MUST NOT submit `rootId` values.
-- `rootId` is assigned only at promotion/registration time under PRD-033 authority.
+Mapping Determinism Rule:
+- targetValidatorId MUST deterministically map to a single policy chain.
+- The mapping logic MUST reside in-core.
+- UI MUST NOT derive rootId or policyKey.
+- REGISTER_POLICY MUST require explicit policyKey.
+- MODIFY_POLICY MUST require explicit targetRootId (derived in-core).
 
 **If action == KEEP_POLICY:**
-- Record `GuardianAudit` `POLICY_ACKNOWLEDGED`.
+- KEEP_POLICY MUST write exactly one audit record: AuditSink.POLICY_ACKNOWLEDGED.
+- KEEP_POLICY MUST NOT emit or reuse any SAFETY block record types (BLOCK_KEY / INFORMED_BLOCK / MIN_PERSIST).
 
 ## 4. Hash and Session Handling
 
@@ -69,13 +79,8 @@ Add to GraphIntervention:
 
 ## 5. Registration Eligibility vs Execution (PRD-033 Compatibility)
 
-- `PersistSession` committing a `DecisionVersion` with `scope="policy.*"` creates **eligibility** for registration.
-- Eligibility is NOT an implicit registration trigger.
-- The actual registration write to `PolicyRegistry` MUST occur only under PRD-033 authority and ONLY via:
-  1) explicit CLI invocation, OR
-  2) post-run boundary execution outside `executePlan` and outside the `PersistSession` transaction boundary.
-- **PROHIBITED:** Any implicit registry write as part of `PersistSession` handlers.
-- **PROHIBITED:** Any registration execution inside `executePlan` (including preflight, pre-persist loop, or completion policy evaluation).
+Normative rule set: See PRD-034 'SSOT: Eligibility vs Registration Execution (Normative)'.
+This section defines only payload shape and local validation constraints.
 
 ### 5.1 PolicyRegistrationRequest (handoff payload)
 ```json
@@ -88,6 +93,11 @@ Add to GraphIntervention:
   "sourceRef": "string"
 }
 ```
+
+- `PolicyRegistrationRequest` MUST be generated after commit and anchored to `decisionVersionRef`.
+- `policyKey` MUST be present for REGISTER_POLICY flows.
+- `policyKey` SHOULD be present for MODIFY_POLICY flows; if absent, executor MUST derive it deterministically from (scope + targetRootId) without network/IO.
+- `decisionVersionRef` MUST be the single authoritative reference; all other fields are derived/verified at execution time.
 
 ### 6. Audit Type Semantics
 

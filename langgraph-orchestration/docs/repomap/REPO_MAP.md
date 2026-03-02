@@ -55,3 +55,8 @@ Rule:
 - runtime/llm/provider.router.ts : 정책에 따른 LLM 프로바이더 라우팅 (resolveProviderConfig)
 - runtime/graph/deps_factory.ts : 런타임 의존성 주입 및 팩토리 생성 (createRuntimePlanExecutorDeps)
 - src/policy/interpreter/yaml.loader.ts : 정책 설정 YAML 파일 로더 및 가디언 선언 해석 (loadYamlFile)
+
+## Policy Registration
+- runtime/policy_registration/post_run_registration.ts : Post-Run eligibility materialization and outbox consumption
+- runtime/policy_registration/registration_executor.ts : Single transaction-isolated registry write executor
+- runtime/cli/policy_registry.ts : CLI administrative trigger (uses same executor)

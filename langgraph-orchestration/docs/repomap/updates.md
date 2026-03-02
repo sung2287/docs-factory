@@ -70,17 +70,28 @@ Format:
 
 ---
 
-## 2026-02-28 PRD-033 (Planned)
-- SSOT/Anchor change: 승인된 Decision 기반 활성 Policy SSOT 승격 체계 도입
-- Entry/Touchpoint change: `src/core/decision/policy_promotion.service.ts` (신규 승격 엔진)
-- Contract/Interface change: Decision ↔ Policy 버전 매핑 및 추적성 계약 확립
+## 2026-03-01 PRD-033
+- SSOT/Anchor change: Policy adoption moved to durable outbox + Post-Run Boundary execution (no PersistSession mutation)
+- Entry/Touchpoint change: runtime/policy_registration/* (post_run_registration + registration_executor), sqlite outbox schema added
+- Contract/Interface change: Single Registration Executor contract enforced; CLI unified to executor path; version-scoped idempotency locked
 
 ---
 
-## 2026-03-01 PRD-034 (DESIGN DRAFT)
-- SSOT/Anchor change: 정책 수정 시 신규 DecisionVersion 생성을 통한 버전 체인 SSOT 유지 (overwrite 금지)
-- Entry/Touchpoint change: `src/session/intervention_handler.ts` (사용자 정책 수정 루프), `src/core/plan/plan.executor.ts` (구조화된 POLICY 위반 보고서 생성)
-- Contract/Interface change: `GraphIntervention` 스키마 확장 (`policyFindings` 필드 추가), 3-way 사용자 응답(KEEP/MODIFY/REGISTER) 계약 확정
+## 2026-03-02 PRD-034
+- SSOT/Anchor change: MODIFY_POLICY 시 레지스트리 기반 `registeredPolicyRootId`를 SSOT로 강제하고 LLM 제공 rootId 무시 (LOCK-A)
+- SSOT/Anchor change: REGISTER_POLICY 시 Post-Run Boundary에서 시드 기반 결정론적 `policyKey` 생성 (LOCK-B)
+- Entry/Touchpoint change: `src/core/plan/plan.handlers.ts` (PersistDecision 단계의 interventionResponse 연동 및 rootId 고정), `src/adapters/web/web.server.ts` (구조화된 액션 파싱)
+- Entry/Touchpoint change: `src/core/decision/decision.scope.ts` (`policy.` 계열 스코프 허용 목록 확장)
+- Contract/Interface change: `DecisionReason`에 `policyRegistration` 시드 필드 추가, `PolicyRef`에 `registeredPolicyRootId` 필드 추가
+- Contract/Interface change: `WebSubmitInput` -> `InterventionResponse` 채널 연동 및 결정론적 액션(APPROVE/MODIFY/REGISTER) 계약 확정
+- **Status: CLOSED**
+
+## 2026-03-02 PRD-035
+- SSOT/Anchor change: `policy.<profile>.<mode>` 스코프에 대한 엄격한 3-segments 검증 규칙 SSOT 확립
+- Entry/Touchpoint change: `src/core/decision/decision.scope.ts` (prefix-based isAllowedDecisionScope 구현)
+- Entry/Touchpoint change: `src/core/plan/plan.handlers.ts` (interventionResponse -> decision.action 프로모션 배선)
+- Contract/Interface change: `B-035` 정책 결정 코어 잠금 해제 및 배선 완료 계약 확정
+- **Status: CLOSED**
 
 ---
 

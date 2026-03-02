@@ -332,42 +332,97 @@ Tests/Evidence:
 ---
 
 ## PRD-033 — Policy Registration Engine
-Status: PLANNED
+Status: CLOSED (2026-03-01)
+
 Scope:
-- 승인된 Decision의 정책 규칙 승격 파이프라인.
-- Decision ↔ Policy 간 결정론적 동기화 및 버전 관리.
-- 정책 업데이트에 따른 ExecutionPlan 리빌드 메커니즘.
+- Durable policy_registration_outbox introduction
+- Single Registration Executor (transaction-isolated)
+- Post-Run Boundary eligibility materialization
+- Web SSOT auto-registration
+
 Touchpoints:
+- runtime/orchestrator/run_request.ts
+- runtime/policy_registration/post_run_registration.ts
+- runtime/policy_registration/registration_executor.ts
+- src/adapter/storage/sqlite/sqlite.storage.ts
+- src/adapter/storage/sqlite/sqlite.stores.ts
 - src/policy/interpreter/policy.interpreter.ts
-- src/core/decision/policy_promotion.service.ts (신규)
-- src/adapter/storage/sqlite/sqlite.stores.ts (PolicyStore 확장)
+- runtime/cli/policy_registry.ts
+
 Forbidden:
-- 사용자 승인(PRD-029) 없이 정책 자동 승격 금지.
-- 정책 승격 시 기존 세션의 PlanHash를 파괴하는 비결정론적 요소 삽입 금지.
+- executePlan 내부 registry write 금지
+- PersistSession 내부 registry/outbox write 금지
+- Decision overwrite 금지
+- registry mutation during active ExecutionPlan 금지
+
 SSOT/Hash Impact:
-- 승격된 정책은 차기 세션의 ExecutionPlan 입력 SSOT가 됨.
-- 정책 버전과 Decision ID 매핑 유지 필수.
+- Registry write는 차기 run의 ExecutionPlan 입력 SSOT가 됨
+- PlanHash 입력에는 registry 상태 직접 포함되지 않음
+- 정책 적용은 next run start에서만 반영
+
 Regression Risks:
-- 정책 동기화 오류로 인한 런타임 구성 충돌.
-- 리빌드 로직 결함으로 구버전 정책이 계속 적용되는 현상.
+- Outbox consume 미실행 시 adoption 지연
+- Idempotency scope 오류 시 중복 registry row
+- Conflict handling 오류 시 retry 루프 교착
+- CLI bypass executor 발생 위험
+
+Tests/Evidence:
+- tests/integration/prd_033_auto_registration_executor.test.ts
+- tests/policy/interpreter.test.ts
+- tests/session/idempotency.test.ts
+- sqlite UNIQUE(decision_version_ref) constraint
+- Independent transaction BEGIN/COMMIT verification
 
 ---
 
 ## PRD-034 — Policy Modification & Conflict Resolution Flow
-Status: PLANNED
+Status: CLOSED (2026-03-02)
 Scope:
-- POLICY 위반 시 사용자 개입(Modification) 루프 구현.
-- 정책 수정 시 신규 DecisionVersion 생성 및 감사 추적.
-- 구조화된 정책 충돌 보고서 생성 엔진.
+- POLICY 위반 발생 시 사용자 개입(KEEP/MODIFY/REGISTER) 루프 구현.
+- Registry-derived rootId SSOT 강제 (LOCK-A).
+- Deterministic policyKey generation at Post-Run Boundary (LOCK-B).
 Touchpoints:
-- src/core/plan/plan.executor.ts (POLICY finding 처리 분기)
-- src/session/intervention_handler.ts
-- src/adapter/storage/sqlite/sqlite.stores.ts (Version chain 관리)
+- src/core/plan/plan.handlers.ts#persistDecision (Action routing)
+- src/core/plan/plan.handlers.ts#toPersistProposal (RootId derivation)
+- runtime/policy_registration/post_run_registration.ts (PolicyKey derivation)
+- src/core/plan/plan.executor.ts (InterventionRequired mapping)
 Forbidden:
-- SAFETY 클래스 위반에 대한 수정 허용 금지 (고정 정책 유지).
-- 기존 정책 레코드에 대한 직접적인 overwrite (UPDATE) 금지.
+- MODIFY_POLICY 시 LLM/Planner가 제공한 rootId 사용 금지 (LOCK-A).
+- UI/LLM이 생성한 policyKey를 권위 있는 값으로 저장 금지 (LOCK-B).
+- executePlan 루프 내에서 policy_registry 직접 쓰기 금지.
 SSOT/Hash Impact:
-- 수정된 정책은 신규 DecisionVersion으로 관리되며, snapshotId 생성의 입력 SSOT임.
+- `policyRef.registeredPolicyRootId`가 수정 대상 체인의 SSOT임.
+- PlanHash 입력 불변 유지 (Intervention action은 해시에 포함되지 않음).
 Regression Risks:
-- 정책 수정 루프에서 무한 재귀 또는 교착 상태 발생.
-- 사용자 응답 지연으로 인한 세션 타임아웃 처리 미흡.
+- targetValidatorId 누락 시 REGISTER_POLICY 커밋 실패.
+- Post-run executor 미호출 시 정책 적용 지연.
+Tests/Evidence:
+- tests/integration/prd_034_deterministic_intervention_channel.test.ts
+- src/core/plan/plan.handlers.ts (LOCK-A implementation)
+- runtime/policy_registration/post_run_registration.ts (LOCK-B implementation)
+
+---
+
+## PRD-035 — Policy Decision Core Unlock & Wiring Completion
+Status: CLOSED (2026-03-02)
+Scope:
+- `policy.*` 스코프에 대한 런타임 스코프 가드 구현 (Strict 3 segments).
+- `interventionResponse` 채널을 `PersistDecision` 액션으로 배선(Wiring).
+- `KEEP_POLICY` 시 감사 로그 기록 연동.
+Touchpoints:
+- src/core/decision/decision.scope.ts (isAllowedDecisionScope extension)
+- src/core/plan/plan.handlers.ts (interventionResponse promotion logic)
+- src/adapters/web/web.server.ts (Action parsing)
+Forbidden:
+- `policy.a.b.c`와 같이 세그먼트 수가 3개가 아닌 스코프 허용 금지.
+- `APPROVE`/`REJECT` 신호를 `decision.action`으로 승격 금지.
+SSOT/Hash Impact:
+- 스코프 확장에도 불구하고 PlanHash 계산 알고리즘은 불변 유지.
+Regression Risks:
+- 스코프 검증 로직 오류로 기존 `global`/`coding` 스코프 차단 위험.
+- 액션 충돌(mismatch) 처리 미흡으로 의도와 다른 정책 적용 위험.
+Tests/Evidence:
+- tests/integration/prd_035_policy_core_unlock.test.ts (Wiring/Scope checks)
+- tests/integration/prd_034_deterministic_intervention_channel.test.ts (Channel integrity)
+- tests/integration/prd_035_planhash_non_policy_snapshot.test.ts (PlanHash regression lock for non-policy runs)
+

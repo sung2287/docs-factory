@@ -146,23 +146,45 @@ Patch:
 ---
 
 ## PRD-033 — Policy Registration Engine
-Status: PLANNED
-- [ ] 승인된 Decision으로부터 정책 규칙(Policy Rule) 생성 확인
-- [ ] 생성된 정책이 차기 ExecutionPlan 빌드에 정상 반영 확인
-- [ ] 정책 승격 과정에서 결정론적 해시(PlanHash) 호환성 유지
-- [ ] 정책 규칙과 원천 Decision ID 간의 추적성(Traceability) 확보
+Status: CLOSED (2026-03-01)
+- [x] Durable policy_registration_outbox table exists
+- [x] Eligibility materialization at Post-Run Boundary only
+- [x] Single Registration Executor (shared by CLI + Web)
+- [x] Independent transaction boundary (BEGIN/COMMIT inside executor)
+- [x] Version-scoped idempotency (rootId, version)
+- [x] Outbox retry-safe with max attempts
+- [x] Next-run policy adoption verified
+- [x] No registry writes inside executePlan
+- [x] No registry writes inside PersistSession
+- [x] Integration tests passing (typecheck + runtime)
 
 Patch:
-- (append-only)
+- Web SSOT auto-registration executor finalized (post-run durable outbox model)
 
 ---
 
 ## PRD-034 — Policy Modification & Conflict Resolution Flow
-Status: DESIGN DRAFT
-- [ ] POLICY 위반 발생 시 구조화된 충돌 보고서 생성 확인
-- [ ] 사용자 응답(승인/수정)에 따른 신규 DecisionVersion 생성 확인
-- [ ] 수정된 정책이 다음 실행 사이클에 즉시 적용 확인
-- [ ] 정책 수정 이력에 대한 감사 추적(Audit Trail) 정합성 확인
+Status: CLOSED (2026-03-02)
+- [x] WebSubmitInput interventionResponse 채널 연동 (APPROVE/MODIFY/REGISTER)
+- [x] MODIFY_POLICY 시 registry-derived rootId SSOT 강제 (LOCK-A)
+- [x] REGISTER_POLICY 시 deterministic policyKey generation (LOCK-B)
+- [x] DecisionReason.policyRegistration 시드 저장 정합성 확인
+- [x] PlanHash 불변성 유지 (Intervention action 제외 확인)
+- [x] Post-Run Boundary eligibility materialization 연동
+- [x] 차기 실행 사이클 정책 적용(adoption) 실증
+- [x] executePlan 루프 내 DB mutation 발생 금지 확인
+
+---
+
+## PRD-035 — Policy Decision Core Unlock & Wiring Completion
+Status: CLOSED (2026-03-02)
+- [x] `policy.<profile>.<mode>` scope validation (strict 3 segments rule)
+- [x] `interventionResponse.action` promotion to `PersistDecision` (Wiring complete)
+- [x] `KEEP_POLICY` audit record (`POLICY_ACKNOWLEDGED`) verified
+- [x] Malformed scope (`policy.a.b.c`) rejection verified
+- [x] Regression: Non-policy runs remain unchanged
+- [x] E2E verification pass (Baseline -> Action -> Adoption)
+- [x] PlanHash snapshot regression test (non-policy fixed input → identical hash verified)
 
 Patch:
 - (append-only)

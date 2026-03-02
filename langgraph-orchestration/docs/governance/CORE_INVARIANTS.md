@@ -24,6 +24,7 @@ Rules:
 - [RULE] Decision → (cycle end) → Atlas update는 허용.
 - [RULE] Atlas 조회 결과로 Decision/WorkItem 자동 변경 트리거는 금지.
 - [RULE] executePlan 루프 내부에서 Atlas write/update를 수행하지 않는다. (Evidence: src/core/plan/plan.executor.ts#executePlan)
+- [RULE] PolicyRegistry mutation MUST occur only at Post-Run Boundary and MUST NOT execute inside executePlan or PersistSession.
 
 ## 5) FailFast Classification
 - [RULE] BudgetExceededError는 FailFast로 분류되며 Intervention/CycleFail로 downgrade 금지. (Evidence: src/atlas/budget/budget.enforcer.ts)
@@ -43,7 +44,8 @@ Status: CLOSED (2026-02-28)
 - [RULE] turnId 단독 기준 멱등 판별 금지.
 - [RULE] PersistProposal 생성은 PlanHash 입력에 영향을 주지 않는다.
 
-## 7) Guardian Enforcement & Audit
-- [RULE] 가디언의 BLOCK/WARN/INFORMED_BLOCK 기록은 정규 SSOT와 분리된 `GuardianAudit` 테이블에 영속화하며, 이는 `PersistSession` 커밋이나 Atlas 갱신이 아니다.
-- [RULE] 동일 `BlockKey(planHash, turnId, validatorId, targetRootId)` 판단은 DB(`GuardianAudit`) 조회를 SSOT로 사용하며, 2회차 이상은 `INFORMED_BLOCK`으로 처리한다.
-- [RULE] 가디언은 `GraphState`, `ExecutionPlan`, `StepResult`를 변경할 수 없으며 오직 판정 결과(`ALLOW | WARN | BLOCK`)만 반환한다. (Evidence: docs/platform/D-030_guardian_yaml_wiring.platform.md)
+## 8) Policy Modification & Scope Strictness
+- [RULE] `policy.*` scope MUST follow the exact structure `policy.<profile>.<mode>` (exactly 3 segments). Any other segments length MUST be rejected as `DECISION_SCOPE_INVALID`. (Evidence: src/core/decision/decision.scope.ts)
+- [RULE] `MODIFY_POLICY` MUST use `registeredPolicyRootId` from `PolicyRef` as the sole SSOT for `targetRootId`. Planner-provided `rootId` MUST be ignored to prevent cross-chain contamination. (Evidence: src/core/plan/plan.handlers.ts#toPersistProposal)
+- [RULE] `REGISTER_POLICY` MUST NOT store `policyKey` inside `DecisionReason`. It stores only seed fields (`targetValidatorId`), and the derived `policyKey` is materialized only at the Post-Run Boundary.
+- [RULE] `interventionResponse.action` (MODIFY/REGISTER/KEEP) MUST NOT be derived from LLM text parsing; it MUST flow as structured data from the WebSubmitInput channel.
